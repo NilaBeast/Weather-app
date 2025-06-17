@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather App</title>
+  <link rel="stylesheet" href="/styles/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <div class="weather-wrapper">
+      <h1 class="app-title">Weather Dashboard</h1>
+
+      <form action="/" method="POST" class="search-form">
+        <input type="text" name="cityName" placeholder="Search city..." required>
+        <button type="submit">🔍</button>
+      </form>
+
+      <% if (error) { %>
+        <p class="error-message"><%= error %></p>
+      <% } %>
+
+      <% if (temp1) { %>
+        <div class="weather-card">
+          <div class="location-time">
+            <h2><%= place %></h2>
+            <p class="date"><%= date1 %></p>
+          </div>
+
+          <div class="weather-main">
+            <img src="<%= img %>" alt="Weather Icon" class="weather-icon">
+            <div class="details">
+              <h3 class="temp"><%= temp1 %></h3>
+              <p class="desc"><%= des %></p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>
