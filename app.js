@@ -13,6 +13,10 @@ app.use(express.static("public"));
 app.get("/", function (req, res) {
   res.render("index", {
     temp1: "",
+    feelsLike: "",
+    humidity: "",
+    wind: "",
+    rain: "",
     date1: date.getDate(),
     des: "Search for Temperature",
     place: "",
@@ -22,67 +26,82 @@ app.get("/", function (req, res) {
 });
 
 app.post("/", function (req, res) {
-  const query = req.body.cityName;
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${query}&appid=${apikey}&units=${unit}`;
+  const city = req.body.cityName;
+  const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=1&appid=${apikey}`;
 
-  https.get(url, (response) => {
-    let data = "";
+  https.get(geoUrl, (geoRes) => {
+    let geoData = "";
 
-    response.on("data", (chunk) => {
-      data += chunk;
-    });
-
-    response.on("end", () => {
-      if (response.statusCode === 200) {
-        try {
-          const weatherData = JSON.parse(data);
-          const temp = weatherData.main.temp;
-          const temperature1 = `${temp}° C`;
-          const weatherDesc = weatherData.weather[0].description;
-          const icon = weatherData.weather[0].icon;
-          const imgurl = `http://openweathermap.org/img/wn/${icon}@4x.png`;
-
-          res.render("index", {
-            temp1: temperature1,
-            date1: date.getDate(),
-            des: weatherDesc,
-            place: query,
-            img: imgurl,
-            error: null
-          });
-        } catch (err) {
-          res.render("index", {
-            temp1: "",
-            date1: date.getDate(),
-            des: "",
-            place: query,
-            img: "",
-            error: "Error parsing weather data."
-          });
-        }
-      } else {
-        res.render("index", {
-          temp1: "",
-          date1: date.getDate(),
-          des: "",
-          place: query,
-          img: "",
-          error: "City not found or invalid API key."
+    geoRes.on("data", (chunk) => geoData += chunk);
+    geoRes.on("end", () => {
+      const parsedGeo = JSON.parse(geoData);
+      if (!parsedGeo || parsedGeo.length === 0) {
+        return res.render("index", {
+          temp1: "", feelsLike: "", humidity: "", wind: "", rain: "",
+          date1: date.getDate(), des: "", place: city, img: "", error: "City not found."
         });
       }
+
+      const { lat, lon, name: cityName } = parsedGeo[0];
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apikey}&units=${unit}`;
+
+      https.get(weatherUrl, (weatherRes) => {
+        let weatherData = "";
+
+        weatherRes.on("data", (chunk) => weatherData += chunk);
+        weatherRes.on("end", () => {
+          if (weatherRes.statusCode === 200) {
+            try {
+              const parsedWeather = JSON.parse(weatherData);
+              const temp = parsedWeather.main.temp;
+              const feelsLike = parsedWeather.main.feels_like;
+              const humidity = parsedWeather.main.humidity;
+              const wind = parsedWeather.wind.speed;
+              const rain = parsedWeather.rain ? parsedWeather.rain["1h"] || 0 : 0;
+              const weatherDesc = parsedWeather.weather[0].description;
+              const icon = parsedWeather.weather[0].icon;
+              const imgurl = `http://openweathermap.org/img/wn/${icon}@4x.png`;
+
+              res.render("index", {
+                temp1: `${temp}° C`,
+                feelsLike: `${feelsLike}° C`,
+                humidity: `${humidity}%`,
+                wind: `${wind} m/s`,
+                rain: `${rain} mm`,
+                date1: date.getDate(),
+                des: weatherDesc,
+                place: cityName,
+                img: imgurl,
+                error: null
+              });
+            } catch (err) {
+              res.render("index", {
+                temp1: "", feelsLike: "", humidity: "", wind: "", rain: "",
+                date1: date.getDate(), des: "", place: city, img: "", error: "Error parsing weather data."
+              });
+            }
+          } else {
+            res.render("index", {
+              temp1: "", feelsLike: "", humidity: "", wind: "", rain: "",
+              date1: date.getDate(), des: "", place: city, img: "", error: "Failed to retrieve weather."
+            });
+          }
+        });
+      }).on("error", () => {
+        res.render("index", {
+          temp1: "", feelsLike: "", humidity: "", wind: "", rain: "",
+          date1: date.getDate(), des: "", place: city, img: "", error: "Weather API network error."
+        });
+      });
     });
-  }).on("error", (err) => {
+  }).on("error", () => {
     res.render("index", {
-      temp1: "",
-      date1: date.getDate(),
-      des: "",
-      place: query,
-      img: "",
-      error: "Network error occurred."
+      temp1: "", feelsLike: "", humidity: "", wind: "", rain: "",
+      date1: date.getDate(), des: "", place: city, img: "", error: "Geocoding API network error."
     });
   });
 });
 
-app.listen(3000, function () {
+app.listen(3000, () => {
   console.log("Server is running on port 3000.");
 });
